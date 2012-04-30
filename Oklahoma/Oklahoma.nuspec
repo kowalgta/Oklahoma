@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+	<id>Oklahoma</id>
+	<version>0.0.0</version>
+	<authors>Dawid Kowalski</authors>
+	<owners>Dawid Kowalski</owners>
+	<licenseUrl></licenseUrl>
+	<projectUrl></projectUrl>	
+	<requireLicenseAcceptance>false</requireLicenseAcceptance>
+	<description>SaleCycle ASP.NET MVC Helper methods</description>
+	<copyright>Copyright 2012</copyright>
+	<tags>salecycle</tags>
+  </metadata>
+  <files>
+	<file src="artifacts\publish\SaleCycle.dll" target="lib\net40" />
+  </files>
+</package>

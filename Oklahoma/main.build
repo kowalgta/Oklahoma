@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<project name="Oklahoma" default="BuildAndPackage">
+	<property name="build.number" value="0.1.0" overwrite="false" />
+	<property name="application.name" value="Oklahoma" overwrite="false" />
+	<property name="application.description" value="SaleCycle ASP.NET MVC Helper Methods" />
+	<include buildfile="..\tools\master.build" />
+	
+	<target name="nuget" depends="BuildAndTest">
+		<property name="nuget.package.dir" value="${artifacts.dir}\package"/>
+		<mkdir dir="${nuget.package.dir}"/>
+		<exec
+			program=".nuget\nuget.exe"
+			basedir="${project::get-base-directory()}">
+			<arg value="pack" />
+			<arg value="Oklahoma.nuspec" />
+			<arg value="-OutputDirectory" />
+			<arg value="${nuget.package.dir}" />
+			<arg value="-Version" />
+			<arg value="${build.number}" />
+		</exec>
+	</target>
+</project>
