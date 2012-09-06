@@ -16,16 +16,16 @@ namespace Oklahoma.Specs
         Cleanup after = () =>
             SaleCycle.StateStorage = new HttpContextStateStorage();
 
-        protected static string formatAsPageVariable(string key, string value)
+        public static string FormatAsPageVariable(string key, string value)
         {
             return String.Format("__sc[\"{0}\"]=\"{1}\";", key, value);
         }
     }
 
     [Subject(typeof(SaleCycle))]
-    public class When_adding_a_page_scoped_variable : SaleCycleContext
+    public class When_adding_a_page_variable : SaleCycleContext
     {
-        It should_add_it_to_the_current_live_person_chat = () =>
+        It should_add_it_to_the_page_variables = () =>
             SaleCycle.Current.PageVariables["e"].ShouldEqual("john@gmail.com");
 
         Because of = () =>
@@ -33,7 +33,7 @@ namespace Oklahoma.Specs
     }
 
     [Subject(typeof(SaleCycle))]
-    public class When_adding_a_page_scoped_variable_with_empty_name : SaleCycleContext
+    public class When_adding_a_page_variable_with_empty_name : SaleCycleContext
     {
         It should_throw_an_argument_null_exception = () =>
             Exception.ShouldBeOfType<ArgumentNullException>();
@@ -59,21 +59,16 @@ namespace Oklahoma.Specs
         It should_include_sc_for_each_page_variable = () =>
         {
             foreach (var kvp in SaleCycle.Current.PageVariables)
-                Result.ShouldContain(formatAsPageVariable(kvp.Key, kvp.Value));
+                Result.ShouldContain(SaleCycleContext.FormatAsPageVariable(kvp.Key, kvp.Value));
         };
 
         It should_include_sc_for_client_id_page_variable = () =>
-            Result.ShouldContain(formatAsPageVariable(SaleCycle.ClientIdVariable, SaleCycle.ClientId));
+            Result.ShouldContain(SaleCycleContext.FormatAsPageVariable(SaleCycle.ClientIdVariable, SaleCycle.ClientId));
 
         It should_include_session_id = () =>
-            Result.ShouldContain(formatAsPageVariable(SaleCycle.SessionIdVariable, SaleCycle.SessionResolver()));
+            Result.ShouldContain(SaleCycleContext.FormatAsPageVariable(SaleCycle.SessionIdVariable, SaleCycle.SessionResolver()));
 
         protected static string Result;
-
-        protected static string formatAsPageVariable(string key, string value)
-        {
-            return String.Format("__sc[\"{0}\"]=\"{1}\";", key, value);
-        }
     }
 
     [Subject(typeof(SaleCycle))]
@@ -82,7 +77,7 @@ namespace Oklahoma.Specs
         Behaves_like<SaleCycleJavascriptRenderedBehavior> sale_cycle_javascript_rendered_behavior;
 
         It should_not_include_cookie_behavior_page_variable = () =>
-            Result.ShouldNotContain(formatAsPageVariable(SaleCycle.CookieBehaviorVariable,
+            Result.ShouldNotContain(FormatAsPageVariable(SaleCycle.CookieBehaviorVariable,
                 ((short)SaleCycleCookieBehavior.CookiesAreEnabledAndSessionIdIsRequired).ToString()));
 
         Establish context = () =>
@@ -108,8 +103,8 @@ namespace Oklahoma.Specs
     [Subject(typeof(SaleCycle))]
     public class When_rendering_sale_cycle_javascript_and_cart_status_was_not_set : SaleCycleRenderContext
     {
-        It should_throw_an_exception = () =>
-            Exception.ShouldBeOfType<ArgumentException>();
+        It should_render_nothing = () =>
+            Result.ShouldBeEmpty();
 
         Establish context = () =>
         {
@@ -126,6 +121,8 @@ namespace Oklahoma.Specs
         Establish context = () =>
         {
             SaleCycle.SessionResolver = null;
+            SaleCycle.ClientId = "1234567";
+            SaleCycle.CookieBehavior = SaleCycleCookieBehavior.CookiesAreEnabledAndSessionIdIsRequired;
             SaleCycle.SetCartStatus(SaleCycleCartStatus.Checkout);
         };
     }
@@ -136,7 +133,7 @@ namespace Oklahoma.Specs
         Behaves_like<SaleCycleJavascriptRenderedBehavior> sale_cycle_javascript_rendered_behavior;
 
         It should_include_cookie_behavior_page_variable = () =>
-            Result.ShouldContain(formatAsPageVariable(SaleCycle.CookieBehaviorVariable,
+            Result.ShouldContain(FormatAsPageVariable(SaleCycle.CookieBehaviorVariable,
                 ((short)SaleCycleCookieBehavior.SaleCycleHandlesSessionManagement).ToString()));
 
         Establish context = () =>
@@ -153,13 +150,58 @@ namespace Oklahoma.Specs
         Behaves_like<SaleCycleJavascriptRenderedBehavior> sale_cycle_javascript_rendered_behavior;
 
         It should_include_currency_page_variable = () =>
-            Result.ShouldContain(formatAsPageVariable(SaleCycle.CurrencyVariable, SaleCycle.Currency));
+            Result.ShouldContain(FormatAsPageVariable(SaleCycle.CurrencyVariable, SaleCycle.Currency));
 
         Establish context = () =>
         {
             SaleCycle.ClientId = "1234567";
             SaleCycle.Currency = "GBP";
             SaleCycle.SetCartStatus(SaleCycleCartStatus.Checkout);
+        };
+    }
+
+    [Subject(typeof(SaleCycle))]
+    public class When_rendering_sale_cycle_javascript_twice : SaleCycleRenderContext
+    {
+        Behaves_like<SaleCycleJavascriptRenderedBehavior> sale_cycle_javascript_rendered_behavior;
+
+        Establish context = () =>
+        {
+            SaleCycle.ClientId = "1234567";
+            SaleCycle.SetCartStatus(SaleCycleCartStatus.Checkout);
+
+            SaleCycle.Render();
+        };
+    }
+
+    [Subject(typeof(SaleCycle))]
+    public class When_rendering_sale_cycle_javascript_and_display_tracking_pixel_was_set : SaleCycleRenderContext
+    {
+        Behaves_like<SaleCycleJavascriptRenderedBehavior> sale_cycle_javascript_rendered_behavior;
+
+        It should_include_tracking_pixel_tag = () =>
+            Result.ShouldContain(String.Format("<img alt=\"salecycle\" src=\"https://app.salecycle.com/Import/PixelCapture.aspx?c=1234567&e=stefan%40stefan.com\" width=\"1px\" height=\"1px\" />"));
+
+        Establish context = () =>
+        {
+            SaleCycle.ClientId = "1234567";
+            SaleCycle.SetCartStatus(SaleCycleCartStatus.Checkout);
+            SaleCycle.Current.DisplayOrderCompletePixel = true;
+            SaleCycle.SetCustomerEmail("stefan@stefan.com");
+        };
+    }
+
+    [Subject(typeof(SaleCycle))]
+    public class When_rendering_sale_cycle_javascript_and_display_tracking_pixel_was_set_but_customer_email_was_not_set : SaleCycleRenderContext
+    {
+        It should_throw_an_exception = () =>
+            Exception.ShouldBeOfType<ArgumentException>();
+
+        Establish context = () =>
+        {
+            SaleCycle.ClientId = "1234567";
+            SaleCycle.SetCartStatus(SaleCycleCartStatus.Checkout);
+            SaleCycle.Current.DisplayOrderCompletePixel = true;
         };
     }
 
@@ -242,14 +284,14 @@ namespace Oklahoma.Specs
         It should_set_custom_field_one_as_pipelined_input_values = () =>
             SaleCycle.Current
                 .PageVariables[SaleCycle.CustomFieldOneVariable]
-                .ShouldEqual("test string that should be pipelined | with javascript \\\"encoding\\\" | withouth extra characters");
+                .ShouldEqual("test string that should be pipelined | with javascript \\\"encoding\\\" | without extra characters");
 
         Because of = () =>
             SaleCycle.SetCustomFieldOne(new List<string>
                     {
                         "test string that should be pipelined ",
                         " with javascript \"encoding\" ",
-                        " withouth extra|characters"
+                        " without extra|characters"
                     });
     }
 
@@ -269,14 +311,14 @@ namespace Oklahoma.Specs
         It should_set_custom_field_one_as_pipelined_input_values = () =>
             SaleCycle.Current
                 .PageVariables[SaleCycle.CustomFieldOneVariable]
-                .ShouldEqual("test string that should be pipelined | with javascript \\\"encoding\\\" | withouth extra characters");
+                .ShouldEqual("test string that should be pipelined | with javascript \\\"encoding\\\" | without extra characters");
 
         Because of = () =>
             SaleCycle.SetCustomFieldOne(new[]
                                         {
                                             "test string that should be pipelined ",
                                             " with javascript \"encoding\" ",
-                                            " withouth extra|characters"
+                                            " without extra|characters"
                                         });
     }
 
@@ -350,7 +392,7 @@ namespace Oklahoma.Specs
         };
 
         It should_not_include_image_variables = () =>
-            SaleCycle.Current.PageVariables.ContainsKey(SaleCycle.CartItemImageUrlsVariable).ShouldNotBeNull();
+            SaleCycle.Current.PageVariables.ContainsKey(SaleCycle.CartItemImageUrlsVariable).ShouldBeFalse();
 
         Because of = () =>
         {

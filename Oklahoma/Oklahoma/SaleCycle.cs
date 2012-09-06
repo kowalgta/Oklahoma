@@ -13,6 +13,8 @@ namespace Oklahoma
         public static IStateStorage StateStorage = new HttpContextStateStorage();
         public static Func<string> SessionResolver = () => HttpContext.Current.Session.SessionID;
 
+        public bool DisplayOrderCompletePixel { get; set; }
+
         private readonly IDictionary<string, string> _pageVariables = new Dictionary<string, string>();
 
         /// <summary>
@@ -185,18 +187,22 @@ namespace Oklahoma
         /// </summary>
         public static IHtmlString Render()
         {
-            addSessionId();
-            addStaticValuesToPageVariables();
+            // if cart status has not been set render nothing
+            if (!Current.PageVariables.ContainsKey(CartStatusVariable))
+                return new HtmlString(String.Empty);
+
             ensureThatMandatoryFieldsAreSet();
-          
+            
             var script = new StringBuilder();
+
+            appendPossibleOrderCompletePixel(script);
+
             script.AppendLine(@"<script type=""text/javascript""> "
                             + "var __sc = new Array();");
 
-            foreach(var variable in Current.PageVariables)
-            {
-                script.AppendLine(getVariableString(variable.Key, variable.Value));
-            }
+            appendSessionId(script);
+            appendStaticValues(script);
+            appendPageVariables(script);
 
             script.AppendLine("try { var __scS = document.createElement(\"script\"); __scS.type = \"text/javascript\"; "
                             + "__scS.src = \"https://app.salecycle.com/salecycle.js\"; document.getElementsByTagName(\"head\")[0].appendChild(__scS); } catch (e) { } "
@@ -205,33 +211,52 @@ namespace Oklahoma
             return new HtmlString(script.ToString());
         }
 
-        static void addSessionId()
-        {
-            if (SessionResolver != null)
-                Current.PageVariables.Add(SessionIdVariable, SessionResolver());
-        }
-
         static void ensureThatMandatoryFieldsAreSet()
         {
             if (ClientId == null)
                 throw new ArgumentException("SaleCycle requires ClientId to be set");
 
-            if (!Current.PageVariables.ContainsKey(CartStatusVariable))
-                throw new ArgumentException("SaleCycle requires cart status to be defined");
-
-            if (CookieBehavior == SaleCycleCookieBehavior.CookiesAreEnabledAndSessionIdIsRequired && !Current.PageVariables.ContainsKey(SessionIdVariable))
+            if (CookieBehavior == SaleCycleCookieBehavior.CookiesAreEnabledAndSessionIdIsRequired && SessionResolver == null)
                 throw new ArgumentException("SaleCycle requires session id to be set when cookie behavior is default");
         }
 
-        static void addStaticValuesToPageVariables()
+        static void appendPossibleOrderCompletePixel(StringBuilder script)
         {
-            Current.PageVariables.Add(ClientIdVariable, ClientId);
+            if (!Current.DisplayOrderCompletePixel) return;
+
+            if (!Current.PageVariables.ContainsKey(CustomerEmailVariable))
+                throw new ArgumentException("Customer email must be defined if you want to display order complete pixel");
+
+            var email = HttpUtility.UrlEncode(Current.PageVariables[CustomerEmailVariable]);
+            var url = String.Format("https://app.salecycle.com/Import/PixelCapture.aspx?c={0}&e={1}", ClientId, email);
+            var tag = String.Format("<img alt=\"salecycle\" src=\"{0}\" width=\"1px\" height=\"1px\" />", url);
+
+            script.AppendLine(tag);
+        }
+
+        static void appendPageVariables(StringBuilder script)
+        {
+            foreach (var variable in Current.PageVariables)
+            {
+                script.AppendLine(getVariableString(variable.Key, variable.Value));
+            }
+        }
+
+        static void appendSessionId(StringBuilder script)
+        {
+            if (SessionResolver != null)
+                script.AppendLine(getVariableString(SessionIdVariable, SessionResolver()));
+        }
+
+        static void appendStaticValues(StringBuilder script)
+        {
+            script.AppendLine(getVariableString(ClientIdVariable, ClientId));
 
             if (Currency != null)
-                Current.PageVariables.Add(CurrencyVariable, Currency);
+                script.AppendLine(getVariableString(CurrencyVariable, Currency));
 
             if (CookieBehavior != SaleCycleCookieBehavior.CookiesAreEnabledAndSessionIdIsRequired)
-                Current.PageVariables.Add(CookieBehaviorVariable, ((short) CookieBehavior).ToString());
+                script.AppendLine(getVariableString(CookieBehaviorVariable, ((short) CookieBehavior).ToString()));
         }
 
         static string getVariableString(string variableName, string value)

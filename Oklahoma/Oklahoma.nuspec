@@ -5,14 +5,14 @@
 	<version>0.0.0</version>
 	<authors>Dawid Kowalski</authors>
 	<owners>Dawid Kowalski</owners>
-	<licenseUrl></licenseUrl>
-	<projectUrl></projectUrl>	
+	<licenseUrl>https://github.com/kowalgta/Oklahoma/blob/master/LICENSE.txt</licenseUrl>
+	<projectUrl>https://github.com/kowalgta/Oklahoma</projectUrl>	
 	<requireLicenseAcceptance>false</requireLicenseAcceptance>
 	<description>SaleCycle ASP.NET MVC Helper methods</description>
 	<copyright>Copyright 2012</copyright>
 	<tags>salecycle</tags>
   </metadata>
   <files>
-	<file src="artifacts\publish\SaleCycle.dll" target="lib\net40" />
+	<file src="artifacts\publish\Oklahoma.dll" target="lib\net40" />
   </files>
 </package>
